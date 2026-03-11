@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky Notes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    h1 { font-size: 1.4rem; color: #333; }
+
+    button.add-btn {
+      padding: 8px 16px;
+      background: #f5c400;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button.add-btn:hover { background: #e0b200; }
+
+    .board {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .note {
+      background: #fff9a3;
+      width: 200px;
+      min-height: 160px;
+      border-radius: 4px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      position: relative;
+    }
+
+    .note textarea {
+      flex: 1;
+      border: none;
+      background: transparent;
+      resize: none;
+      font-size: 0.95rem;
+      font-family: sans-serif;
+      outline: none;
+      color: #333;
+      min-height: 120px;
+    }
+
+    .note .delete-btn {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #aaa;
+      line-height: 1;
+    }
+
+    .note .delete-btn:hover { color: #e00; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sticky Notes</h1>
+    <button class="add-btn" onclick="addNote()">+ New Note</button>
+  </header>
+  <div class="board" id="board"></div>
+
+  <script>
+    const board = document.getElementById('board');
+
+    function getNotes() {
+      return JSON.parse(localStorage.getItem('sticky-notes') || '[]');
+    }
+
+    function saveNotes(notes) {
+      localStorage.setItem('sticky-notes', JSON.stringify(notes));
+    }
+
+    function render() {
+      board.innerHTML = '';
+      getNotes().forEach((text, i) => {
+        const note = document.createElement('div');
+        note.className = 'note';
+        note.innerHTML = `
+          <button class="delete-btn" onclick="deleteNote(${i})">✕</button>
+          <textarea placeholder="Type your note...">${text}</textarea>
+        `;
+        note.querySelector('textarea').addEventListener('input', e => {
+          const notes = getNotes();
+          notes[i] = e.target.value;
+          saveNotes(notes);
+        });
+        board.appendChild(note);
+      });
+    }
+
+    function addNote() {
+      const notes = getNotes();
+      notes.push('');
+      saveNotes(notes);
+      render();
+      board.lastChild.querySelector('textarea').focus();
+    }
+
+    function deleteNote(i) {
+      const notes = getNotes();
+      notes.splice(i, 1);
+      saveNotes(notes);
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
