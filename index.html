@@ -11,14 +11,16 @@
       font-family: sans-serif;
       background: #f0f0f0;
       min-height: 100vh;
-      padding: 20px;
+      overflow: hidden;
     }
 
     header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      padding: 16px 20px;
+      position: relative;
+      z-index: 10;
     }
 
     h1 { font-size: 1.4rem; color: #333; }
@@ -36,9 +38,9 @@
     button.add-btn:hover { background: #e0b200; }
 
     .board {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 60px);
     }
 
     .note {
@@ -50,8 +52,23 @@
       display: flex;
       flex-direction: column;
       padding: 10px;
-      position: relative;
+      position: absolute;
+      cursor: default;
+      user-select: none;
     }
+
+    .note.dragging {
+      box-shadow: 6px 6px 16px rgba(0,0,0,0.25);
+      z-index: 100;
+    }
+
+    .note .drag-handle {
+      height: 18px;
+      cursor: grab;
+      margin-bottom: 4px;
+    }
+
+    .note .drag-handle:active { cursor: grabbing; }
 
     .note textarea {
       flex: 1;
@@ -63,11 +80,13 @@
       outline: none;
       color: #333;
       min-height: 120px;
+      cursor: text;
+      user-select: text;
     }
 
     .note .delete-btn {
       position: absolute;
-      top: 6px;
+      top: 4px;
       right: 8px;
       background: none;
       border: none;
@@ -100,25 +119,73 @@
 
     function render() {
       board.innerHTML = '';
-      getNotes().forEach((text, i) => {
-        const note = document.createElement('div');
-        note.className = 'note';
-        note.innerHTML = `
+      getNotes().forEach((note, i) => {
+        const el = document.createElement('div');
+        el.className = 'note';
+        el.style.left = note.x + 'px';
+        el.style.top = note.y + 'px';
+        el.style.zIndex = note.z || i + 1;
+        el.innerHTML = `
+          <div class="drag-handle">···</div>
           <button class="delete-btn" onclick="deleteNote(${i})">✕</button>
-          <textarea placeholder="Type your note...">${text}</textarea>
+          <textarea placeholder="Type your note...">${note.text}</textarea>
         `;
-        note.querySelector('textarea').addEventListener('input', e => {
+
+        el.querySelector('textarea').addEventListener('input', e => {
           const notes = getNotes();
-          notes[i] = e.target.value;
+          notes[i].text = e.target.value;
           saveNotes(notes);
         });
-        board.appendChild(note);
+
+        makeDraggable(el, i);
+        board.appendChild(el);
+      });
+    }
+
+    function makeDraggable(el, i) {
+      const handle = el.querySelector('.drag-handle');
+      let startX, startY, startLeft, startTop;
+
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const notes = getNotes();
+        const maxZ = Math.max(...notes.map(n => n.z || 1));
+        notes[i].z = maxZ + 1;
+        saveNotes(notes);
+        el.style.zIndex = maxZ + 1;
+
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(el.style.left) || 0;
+        startTop = parseInt(el.style.top) || 0;
+        el.classList.add('dragging');
+
+        function onMove(e) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          el.style.left = Math.max(0, startLeft + dx) + 'px';
+          el.style.top = Math.max(0, startTop + dy) + 'px';
+        }
+
+        function onUp() {
+          el.classList.remove('dragging');
+          const notes = getNotes();
+          notes[i].x = parseInt(el.style.left);
+          notes[i].y = parseInt(el.style.top);
+          saveNotes(notes);
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
       });
     }
 
     function addNote() {
       const notes = getNotes();
-      notes.push('');
+      const offset = notes.length * 20;
+      notes.push({ text: '', x: 40 + offset, y: 40 + offset, z: notes.length + 1 });
       saveNotes(notes);
       render();
       board.lastChild.querySelector('textarea').focus();
